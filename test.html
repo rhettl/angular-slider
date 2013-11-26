@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <link rel="stylesheet" href="angular-slider.css"/>
+
+    <style>
+        .active {
+            color: #000;
+            background-color: #ebebeb;
+        }
+        ul.scale-items {
+            /*width: 100%;*/
+            color: lightgray;
+            padding: 0;
+            margin: -2px 5px 0 15px;
+        }
+        li.scale-item {
+            display: inline-block;
+            border-left: 1px solid #000;
+            border-bottom: 1px solid #000;
+            line-height: 26px;
+            text-align: center;
+            cursor: pointer;
+        }
+        li.scale-item:last-child {
+            border-right: 1px solid #000;
+        }
+        slider {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body ng-app="sliderTest" ng-controller="sliderCtrl" ng-init="test=['a', 'b', 'c', 'd', 'e']">
+
+    <slider floor="100" ceiling="1000" step="1" precision="0.01" ng-model="cost"></slider>
+    <input type="text" ng-model="cost" ng-init="cost=500" />
+
+    <slider floor="10" ceiling="60" ng-model-low="minAge" ng-model-high="maxAge"></slider>
+    <input type="text" ng-model="minAge" ng-init="minAge=10" /> <input type="text" ng-model="maxAge" ng-init="maxAge=60" /><br /><br /><br />
+
+    <scale ng-model-low="scale.low" ng-model-high="scale.high" scale="test" ng-init="scale = {}" style="width:900px"></scale>
+    <input type="text" ng-model="scale.low" /> <input type="text" ng-model="scale.high" />
+
+    <script src="angular.js"></script>
+    <script src="angular-slider.js"></script>
+
+    <script>
+        angular.module('sliderTest', ['uiSlider'])
+            .directive('scale', function(){
+                var forEach = angular.forEach,
+                    copy = angular.copy,
+                    abs = Math.abs,
+                    UCFirst = function(string) {
+                        return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+                    }
+
+                return {
+                    restrict: 'A',
+                    scope:{
+                        publicLow: '=ngModelLow',
+                        publicHigh: '=ngModelHigh',
+                        scale: '='
+                    },
+                    replace: true,
+                    template:   '<div class="scale-slider">' +
+                                    '<slider floor="0" ceiling="{{items.length}}" ng-model-low="privateLow" ng-model-high="privateHigh" ></slider>' +
+                                    '<ul class="scale-items">' +
+                                        '<li ng-repeat="item in items" class="scale-item" style="width: {{(contWidth - 1 - items.length)/items.length}}px" ng-class="{active: item.isActive}" ng-bind="item.display" ng-click="select($event, $index)"></li>' +
+                                    '</ul>' +
+                                '</div>',
+                    link: function(scope, elem){
+                        if (typeof scope.scale === 'object' && scope.scale.length > 0){
+                            scope.items = [];
+                            if (typeof scope.scale[0] === 'string'){
+                                var temp = [];
+                                scope.scale.forEach(function(item){
+                                    temp.push({
+                                        value: item,
+                                        display: item
+                                    });
+                                });
+
+                                scope.scale = temp;
+                            }
+                            scope.items = copy(scope.scale);
+                        } else {
+                            scope.scale = [];
+                            scope.items = [];
+                        }
+
+                        var defaultLow = 0,
+                            width = elem.find('ul')[0].offsetWidth,
+                            defaultHigh = scope.items.length ,
+                            swapModels = function(){
+                                var temp = scope.privateHigh;
+                                scope.privateHigh = scope.privateLow;
+                                scope.privateLow = temp;
+                            },
+                            getValue = function(i, hl){
+                                if (hl === 'high'){
+                                    i --;
+                                }
+
+                                return scope.items[i].value;
+                            },
+                            getIndex = function(v, hl){
+                                var index = 0;
+                                scope.items.forEach(function(item, i){
+                                    if (item.value === v){
+                                        index = i;
+                                        return false;
+                                    }
+                                });
+
+                                if (hl === 'high'){
+                                    index += 1;
+                                }
+                                console.log(3, index);
+
+                                return index;
+                            },
+                            getClosest = function(index){
+                                var low = abs(index - scope.privateLow),
+                                    high = abs(index - scope.privateHigh -1);
+                                console.log(index, scope.privateHigh, scope.privateLow, high, low)
+                                if (low === 0 && high !== 0){
+                                    return 1;
+                                } else if (high === 0 && low !== 0){
+                                    return -1;
+                                } else if (low === 0 && high === 0){
+                                    return 0;
+                                }
+
+                                if (high < low){
+                                    return 1;
+                                } else if (low < high){
+                                    return -1;
+                                } else if (index - scope.privateLow > 0) {
+                                    return 1;
+                                } else if (index - scope.privateLow < 0) {
+                                    return -1;
+                                } else {
+                                    return -1
+                                }
+                            },
+                            updateActive = function(){
+                                scope.items.forEach(function(item, i){
+                                    if (i < scope.privateLow || i >= scope.privateHigh){
+                                        item.isActive = false;
+                                    } else if (i >= scope.privateLow && i < scope.privateHigh){
+                                        item.isActive = true;
+                                    }
+                                });
+                            },
+                            setVar = function(pub, hl, value){
+                                var hlUC = UCFirst(hl);
+                                if (typeof value === 'undefined'){
+                                    if (pub === 'public'){
+                                        value = getValue(scope['private'+hlUC], hl);
+                                    } else if (pub === 'private'){
+                                        console.log(2, value, scope['public'+hlUC]);
+                                        value = getIndex(scope['public'+hlUC], hl);
+                                        console.log(4, value);
+                                    }
+                                }
+                                console.log(3, value);
+                                scope[pub+hlUC] = value;
+                                if (scope.privateHigh < scope.privateLow){
+                                    swapModels();
+                                }
+                                updateActive();
+                            },
+                            numToHL = function(i){
+                                if (i > 0){
+                                    return 'high';
+                                } else if (i < 0){
+                                    return 'low';
+                                } else {
+                                    return 'low';
+                                }
+                            }
+                        ;
+
+                        scope.privateLow = defaultLow;
+                        scope.privateHigh = defaultHigh;
+                        scope.contWidth = width;
+                        scope.select = function(event, index){
+                            var closest = getClosest(index);
+                            if (closest === 0){
+                                return;
+                            }
+
+                            var hl = numToHL(closest);
+                            console.log(1, index);
+                            setVar('private', hl, index);
+                        }
+
+                        scope.$watch('privateLow', function(newVal, oldVal){
+                            if (newVal === scope.privateHigh){
+                                scope.privateLow = oldVal;
+                            } else {
+                                setVar('public', 'low');
+                            }
+                        });
+                        scope.$watch('privateHigh', function(newVal, oldVal){
+                            if (newVal === scope.privateLow){
+                                scope.privateHigh = oldVal;
+                            } else {
+                                setVar('public', 'high');
+                            }
+                        });
+                        scope.$watch('publicLow', function(){
+                            setVar('private', 'low');
+                        });
+                        scope.$watch('publicHigh', function(){
+                            setVar('private', 'high');
+                        });
+                        console.log(scope.contWidth);
+                    }
+                }
+            })
+            .controller('sliderCtrl', ['$scope', function($scope){
+
+            }]);
+    </script>
+
+</body>
+</html>
