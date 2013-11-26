@@ -318,8 +318,10 @@
                                 }
                                 return _results;
                             };
+
                             setPointers();
                             adjustBubbles();
+
                             if (!boundToInputs) {
                                 return setBindings();
                             }
