@@ -141,7 +141,7 @@
                 }
                 return {
                     post: function (scope, element, attributes) {
-                        var barWidth, boundToInputs, dimensions, maxOffset, maxValue, minOffset, minValue, ngDocument, offsetRange, pointerHalfWidth, updateDOM, valueRange, w, _j, _len1;
+                        var barWidth, boundToInputs, dimensions, maxOffset, maxValue, minOffset, minValue, ngDocument, offsetRange, pointerHalfWidth, updateDOM, valueRange, w, _j, _len1, rangeMarkers;
 
                         boundToInputs = false;
                         ngDocument = angularize(document);

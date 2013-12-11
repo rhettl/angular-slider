@@ -9,6 +9,10 @@
             color: #000;
             background-color: #ebebeb;
         }
+        /*.center{*/
+            /*width: 85%;*/
+            /*text-align: center;*/
+        /*}*/
         ul.scale-items {
             /*width: 100%;*/
             color: lightgray;
@@ -31,16 +35,28 @@
         }
     </style>
 </head>
-<body ng-app="sliderTest" ng-controller="sliderCtrl" ng-init="test=['a', 'b', 'c', 'd', 'e']">
+<body ng-app="sliderTest" ng-controller="sliderCtrl">
 
-    <slider floor="100" ceiling="1000" step="1" precision="0.01" ng-model="cost"></slider>
-    <input type="text" ng-model="cost" ng-init="cost=500" />
+    <slider floor="100" ceiling="1000" step="0.1" precision="5" ng-model="cost"></slider>
+    <input type="text" ng-model="cost" ng-init="cost=500" /><br /><br /><br />
 
-    <slider floor="10" ceiling="60" ng-model-low="minAge" ng-model-high="maxAge"></slider>
-    <input type="text" ng-model="minAge" ng-init="minAge=10" /> <input type="text" ng-model="maxAge" ng-init="maxAge=60" /><br /><br /><br />
+    <div class="center">
+        <slider floor="100" ceiling="1000" step="0.05" precision="2" ng-model-low="costMin" ng-model-high="costMax"></slider>
+        <input type="text" buffer-model="costMin" ng-init="costMin = 100" /> <input type="text" buffer-model="costMax" ng-init="costMax = 1000" /><br />
+    </div>
+
+    <log-slider floor="0" ceiling="1000000" precision="2" ng-model-low="minAge" ng-model-high="maxAge" markers="rangeMarkers"></log-slider>
+    <input type="text" buffer-model="minAge" /> <input type="text" buffer-model="maxAge" /><br />
+    <span ng-bind="minAge | currency"></span> :: <span ng-bind="maxAge | currency"></span>
+    <br /><br /><br />
 
     <scale ng-model-low="scale.low" ng-model-high="scale.high" scale="test" ng-init="scale = {}" style="width:900px"></scale>
-    <input type="text" ng-model="scale.low" /> <input type="text" ng-model="scale.high" />
+    <select ng-model="scale.low">
+        <option ng-repeat="b in test" value="{{b}}" ng-bind="b"></option>
+    </select>
+    <select ng-model="scale.high">
+        <option ng-repeat="b in test" value="{{b}}" ng-bind="b"></option>
+    </select>
 
     <script src="angular.js"></script>
     <script src="angular-slider.js"></script>
@@ -56,7 +72,7 @@
                     }
 
                 return {
-                    restrict: 'A',
+                    restrict: 'E',
                     scope:{
                         publicLow: '=ngModelLow',
                         publicHigh: '=ngModelHigh',
@@ -81,9 +97,10 @@
                                     });
                                 });
 
-                                scope.scale = temp;
+                                scope.items = temp;
+                            } else {
+                                scope.items = copy(scope.scale);
                             }
-                            scope.items = copy(scope.scale);
                         } else {
                             scope.scale = [];
                             scope.items = [];
@@ -96,6 +113,11 @@
                                 var temp = scope.privateHigh;
                                 scope.privateHigh = scope.privateLow;
                                 scope.privateLow = temp;
+                            },
+                            swapPublicModels = function(){
+                                var temp = scope.publicLow;
+                                scope.publicLow = scope.publicHigh;
+                                scope.publicHigh = temp;
                             },
                             getValue = function(i, hl){
                                 if (hl === 'high'){
@@ -169,6 +191,8 @@
                                 scope[pub+hlUC] = value;
                                 if (scope.privateHigh < scope.privateLow){
                                     swapModels();
+                                } else if (scope.privateHigh === scope.privateLow){
+                                    swapPublicModels();
                                 }
                                 updateActive();
                             },
@@ -213,19 +237,248 @@
                                 setVar('public', 'high');
                             }
                         });
-//                        scope.$watch('publicLow', function(){
-//                            setVar('private', 'low');
-//                        });
-//                        scope.$watch('publicHigh', function(){
-//                            setVar('private', 'high');
-//                        });
+                        scope.$watch('publicLow', function(){
+                            setVar('private', 'low');
+                        });
+                        scope.$watch('publicHigh', function(){
+                            setVar('private', 'high');
+                        });
                     }
                 }
             })
-            .controller('sliderCtrl', ['$scope', function($scope){
+            .directive('logSlider', [function(){
+                var abs = Math.abs,
+                    getPointerValue = function(value, rangeMarkers, scale){
+                        if( rangeMarkers && rangeMarkers.length > 0) {
+                            var mark, _startPercent, _fromVal;
 
+                            _startPercent = 0;
+                            _fromVal = scale[0];
+
+                            for (var i = 0; i <= rangeMarkers.length; i++) {
+                                if (rangeMarkers[i])
+                                    mark = rangeMarkers[i].split("/");
+                                else
+                                    mark = [100, scale[1]];
+
+                                mark[0] = new Number(mark[0]); mark[1] = new Number(mark[1]);
+
+                                if (value >= _startPercent && value <= mark[0]) {
+                                    return (value - _startPercent) / (mark[0] - _startPercent) * (mark[1] - _fromVal) + _fromVal;
+                                }
+
+                                _startPercent = mark[0]; _fromVal = mark[1];
+                            }
+
+                        } else {
+                            return (value / 100) * (scale[1] - scale[0]) + scale[0];
+                        }
+                    },
+                    getLocForPointer = function (value, rangeMarkers, scale){
+                            if( rangeMarkers && rangeMarkers.length > 0) {
+                                var mark, _startPercent, _fromVal;
+                                _startPercent = 0;
+                                _fromVal = scale[0];
+
+                                for (var i = 0; i <= rangeMarkers.length; i++) {
+                                    if (rangeMarkers[i])
+                                        mark = rangeMarkers[i].split("/");
+                                    else
+                                        mark = [100, scale[1]];
+
+                                    mark[0] = new Number(mark[0]); mark[1] = new Number(mark[1]);
+
+                                    if (value >= _fromVal && value <= mark[1]) {
+                                        return (((value - _fromVal) * (mark[0] - _startPercent)) / (mark[1] - _fromVal)) + _startPercent;
+                                    }
+
+                                    _startPercent = mark[0]; _fromVal = mark[1];
+                                }
+
+                            } else {
+                                return ((value - scale[0]) / (scale[1] - scale[0])) * 100;
+                            }
+                        };
+                return {
+                    restrict: 'E',
+                    scope:{
+                        publicLow: '=ngModelLow',
+                        publicHigh: '=ngModelHigh',
+                        floorVal: '=floor',
+                        ceilVal: '=ceiling',
+                        precision: '=?',
+                        markers: '='
+                    },
+                    replace: true,
+                    template:   '<div class="log-slider">' +
+                                    '<slider floor="0.0" ceiling="100.0" precision="9" step="0.000000001" ng-model-low="privateLow" ng-model-high="privateHigh"></slider>' +
+                                '</div>',
+                    link: function(scope, elem){
+                        var scale = [scope.floorVal, scope.ceilVal],
+                            precision = typeof scope.precision == 'undefined' ? 0 : scope.precision,
+                            getClosest = function(index){
+                                var privHigh = parseFloat(scope.privateHigh),
+                                    privLow = parseFloat(scope.privateLow),
+                                    lowDiff = abs(index - privLow),
+                                    highDiff = abs(index - privHigh);
+
+                                if (lowDiff === 0 && highDiff !== 0){
+                                    return 1;
+                                } else if (highDiff === 0 && lowDiff !== 0){
+                                    return -1;
+                                } else if (lowDiff === 0 && highDiff === 0){
+                                    return 0;
+                                }
+
+                                if (highDiff < lowDiff){
+                                    return 1;
+                                } else if (lowDiff < highDiff){
+                                    return -1;
+                                } else if (index - privLow > 0) {
+                                    return 1;
+                                } else if (index - privLow < 0) {
+                                    return -1;
+                                } else {
+                                    return -1
+                                }
+                            }
+                            ;
+
+                        scope.privateHigh = 100;
+                        scope.privateLow = 0;
+
+                        scope.$watch('privateLow', function(newVal){
+                            scope.publicLow = (getPointerValue(newVal, scope.markers, scale) || 0.0).toFixed(precision);
+                        });
+                        scope.$watch('privateHigh', function(newVal){
+                            scope.publicHigh = (getPointerValue(newVal, scope.markers, scale) || 0.0).toFixed(precision);
+                        });
+                        scope.$watch('publicLow', function(newVal){
+                            newVal = newVal.replace(/[^\d.-]/g, '');
+                            scope.privateLow = getLocForPointer(parseFloat(newVal || 0), scope.markers, scale);
+                        });
+                        scope.$watch('publicHigh', function(newVal){
+                            newVal = newVal.replace(/[^\d.-]/g, '');
+                            scope.privateHigh = getLocForPointer(parseFloat(newVal || 0), scope.markers, scale);
+                        });
+                        elem.bind('mouseup', function(e){
+                            if (e.toElement.className.indexOf('bar') === -1){
+                                return;
+                            }
+
+                            var bounds = elem[0].getBoundingClientRect(),
+                                percent = (e.clientX - bounds.left) / bounds.width * 100,
+                                closest = getClosest(percent),
+                                newPos = getPointerValue(percent, scope.markers, scale).toString();
+
+                            scope.$apply(function(){
+                                if (closest == -1){
+                                    scope.publicLow = newPos;
+                                } else if (closest == 1){
+                                    scope.publicHigh = newPos;
+                                }
+                            });
+                        });
+                    }
+                };
+            }])
+            .directive("ngPause", [
+                "$parse", "$timeout", function($parse, $timeout) {
+                    return {
+                        restrict: "A",
+                        link: function(scope, element, attributes) {
+                            var delay, expression, keyupTimer;
+                            expression = $parse(attributes["macPauseTyping"]);
+                            delay = scope.$eval(attributes["macPauseTypingDelay"]) || 800;
+                            keyupTimer = null;
+                            return element.bind("keyup", function($event) {
+                                if (keyupTimer != null) {
+                                    $timeout.cancel(keyupTimer);
+                                }
+                                return keyupTimer = $timeout(function() {
+                                    return expression(scope, {
+                                        $event: $event
+                                    });
+                                }, delay);
+                            });
+                        }
+                    };
+                }
+            ])
+            .directive('bufferModel', ['$timeout', function($timeout){
+
+                return {
+                    restrict: 'A',
+                    scope: {
+                        bufferModel: '='
+                    },
+                    link: function(scope, elem, attr){
+                        var timer,
+                            delay = 1000;
+
+                        var changeNow = function(){
+                                if (timer != null){
+                                    $timeout.cancel(timer);
+                                }
+                                scope.bufferModel = elem.val();
+                            },
+                            changeOnTime = function(){
+                                if (timer != null){
+                                    $timeout.cancel(timer);
+                                }
+                                timer = $timeout(function(){
+                                    return;
+                                }, delay);
+                                timer.then(changeNow);
+                            };
+
+                        elem.val(scope.bufferModel);
+                        elem.bind('keyup', changeOnTime);
+                        elem.bind('blur', changeNow);
+                        elem.bind('keydown', function(e){
+                            if (e.keyCode == 13){
+                                console.log('keypress');
+                                changeNow();
+                            }
+                        });
+
+                        scope.$watch('bufferModel', function(newVal){
+                            elem.val(newVal)
+                        })
+                    }
+                };
+            }])
+            .controller('sliderCtrl', ['$scope', function($scope){
+                $scope.rangeMarkers = ['5/350', '50/3000', '75/10000'];
+                $scope.test=['IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'SI3', 'I1'];
+                $scope.minAge = 0;
+                $scope.maxAge = 5000;
             }]);
+
     </script>
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
