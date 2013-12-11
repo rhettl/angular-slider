@@ -84,3 +84,28 @@ slider span.bubble.selection {
 slider span.bubble.limit {
   color: #808080;
 }
+
+.scale-slider li.scale-item.active {
+    color: #000;
+    background-color: #ebebeb;
+}
+.scale-slider ul.scale-items {
+    /*width: 100%;*/
+    color: lightgray;
+    padding: 0;
+    margin: -2px 5px 0 15px;
+}
+.scale-slider li.scale-item {
+    display: inline-block;
+    border-left: 1px solid #000;
+    border-bottom: 1px solid #000;
+    line-height: 26px;
+    text-align: center;
+    cursor: pointer;
+}
+.scale-slider li.scale-item:last-child {
+    border-right: 1px solid #000;
+}
+slider {
+    margin-bottom: 0;
+}
